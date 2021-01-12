@@ -1,4 +1,4 @@
-package com.saith.workflow;
+package com.saith.workflow.service;
 
 import com.alibaba.fastjson.annotation.JSONField;
 import lombok.AllArgsConstructor;

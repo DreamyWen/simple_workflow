@@ -1,4 +1,4 @@
-package com.saith.workflow;
+package com.saith.workflow.service;
 
 import com.alibaba.fastjson.JSON;
 import org.jgrapht.graph.DirectedAcyclicGraph;
@@ -30,6 +30,7 @@ public class Pipeline {
     }
 
     private Pipeline applyDep(DAGNode node1, DAGNode node2) {
+
 //        dag.addVertex(node1);
         dag.addVertex(node2);
         dag.addEdge(node1, node2);

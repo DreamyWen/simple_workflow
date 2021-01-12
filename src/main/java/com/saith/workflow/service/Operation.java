@@ -1,4 +1,4 @@
-package com.saith.workflow;
+package com.saith.workflow.service;
 
 public abstract class Operation<Input, Output> extends DAGNode {
 
