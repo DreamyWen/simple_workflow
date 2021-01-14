@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-public class AsynchronousSumAndMax {
+public class CompletableFutureTest {
     public static void main(final String[] args) {
         stopwatch(() -> {
             Stream<CompletableFuture<Integer>> xs = Stream.of(1, 2, 3, 4, 5).map(
