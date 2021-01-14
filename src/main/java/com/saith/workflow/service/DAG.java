@@ -76,8 +76,9 @@ public class DAG {
                     processContext.addData(dagNode.getProcessor().getProcessorKey(), result);
                     return dagNode;
                 });
-                //暂时先用id
-                completableFutureMap.put(dagNode.getId().toString(), nodeFuture);
+                //TODO 暂时先用id
+//                completableFutureMap.put(dagNode.getId().toString(), nodeFuture);
+                completableFutureMap.put(dagNode.getProcessor().getProcessorKey(), nodeFuture);
             }
             if (inDegree == 1) {
                 //获取父亲节点
@@ -85,7 +86,7 @@ public class DAG {
                 DefaultEdge incomingEdge = incomingEdgeSet.stream().findFirst().orElse(new DefaultEdge());
                 DAGNode fatherNode = dag.getEdgeSource(incomingEdge);
                 //此处获取可能为null
-                CompletableFuture<DAGNode> fatherFuture = completableFutureMap.get(fatherNode.getId().toString());
+                CompletableFuture<DAGNode> fatherFuture = completableFutureMap.get(fatherNode.getProcessor().getProcessorKey());
                 CompletableFuture<DAGNode> curFuture = fatherFuture.thenApplyAsync(curNode -> {
                     //获取上个节点结果
                     DataSet<Row> fatherData = (DataSet<Row>) processContext.getData().get(fatherNode.getProcessor().getProcessorKey());
@@ -98,7 +99,8 @@ public class DAG {
                     processContext.addData(dagNode.getProcessor().getProcessorKey(), result);
                     return curNode;
                 });
-                completableFutureMap.put(dagNode.getId().toString(), curFuture);
+                //放入future
+                completableFutureMap.put(dagNode.getProcessor().getProcessorKey(), curFuture);
             }
             if (inDegree > 1) {
                 //如果入度比2大,需要合并前面的节点
@@ -106,7 +108,7 @@ public class DAG {
                 Set<DefaultEdge> incomingEdgeSet = dag.incomingEdgesOf(dagNode);
                 List<DAGNode> fatherList = incomingEdgeSet.stream().map(i -> dag.getEdgeSource(i)).collect(Collectors.toList());
                 List<CompletableFuture<DAGNode>> futureList = fatherList.stream()
-                        .map(i -> completableFutureMap.get(i.getId().toString()))
+                        .map(i -> completableFutureMap.get(i.getProcessor().getProcessorKey()))
                         .collect(Collectors.toList());
                 CompletableFuture<DAGNode> merge = CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0])).thenApplyAsync(
                         curNode -> {
@@ -125,7 +127,7 @@ public class DAG {
                             return dagNode;
                         }
                 );
-                completableFutureMap.put(dagNode.getId().toString(), merge);
+                completableFutureMap.put(dagNode.getProcessor().getProcessorKey(), merge);
             }
 //            Set<DAGNode> ancestorSet = dag.getAncestors(dagNode);
 //            Set<DAGNode> dependencySet = dag.getDescendants(dagNode);

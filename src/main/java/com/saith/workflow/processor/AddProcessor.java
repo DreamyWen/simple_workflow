@@ -31,13 +31,26 @@ public class AddProcessor implements Processor {
     @Override
     public DataSet<Row> process(DataSet<Row> input, Map<String, DataSet<Row>> otherInput, ProcessContext processContext) {
         System.out.println(Thread.currentThread() + String.valueOf(id) + " Add processor start optCnt" + addCnt);
+        int counter = 0;
+        if (otherInput != null) {
+            for (Map.Entry<String, DataSet<Row>> entry : otherInput.entrySet()) {
+                List<Row> otherRowList = entry.getValue().getData();
+                if (otherRowList != null && otherRowList.size() > 0) {
+                    Row row = otherRowList.get(0);
+                    int dataCnt = (int) row.getData();
+                    counter += dataCnt;
+                    System.out.println(Thread.currentThread() + String.valueOf(id) + " AddProcessor otherInput" + row);
+                }
+            }
+        }
+
         if (input != null) {
             List<Row> rowList = input.getData();
             if (rowList == null) {
                 rowList = new ArrayList<>();
                 Row row = new Row();
                 row.setId(String.valueOf(id));
-                row.setData(addCnt);
+                row.setData(addCnt + counter);
                 rowList.add(row);
                 input.setData(rowList);
                 System.out.println(Thread.currentThread() + " " + row);
@@ -47,7 +60,7 @@ public class AddProcessor implements Processor {
                     Object obj = row.getData();
                     int cnt = (int) obj;
                     System.out.println(Thread.currentThread() + String.valueOf(id) + " get input=" + obj);
-                    int result = cnt + addCnt;
+                    int result = cnt + addCnt + counter;
                     System.out.println(Thread.currentThread() + String.valueOf(id) + "  result=" + result);
                     //这里 多线程同时写这个对象会有问题
                     row.setData(result);
