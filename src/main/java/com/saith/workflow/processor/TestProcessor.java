@@ -4,6 +4,8 @@ import com.saith.workflow.service.DataSet;
 import com.saith.workflow.service.ProcessContext;
 import com.saith.workflow.service.Row;
 
+import java.util.Map;
+
 /**
  * @author zhangjiawen
  * @version 1.0
@@ -16,7 +18,7 @@ public class TestProcessor implements Processor {
     }
 
     @Override
-    public DataSet<Row> process(DataSet<Row> input, ProcessContext processContext) {
+    public DataSet<Row> process(DataSet<Row> input, Map<String, DataSet<Row>> otherInput, ProcessContext processContext) {
         System.out.println("begin test processor");
         if (input != null) {
             System.out.println(input);

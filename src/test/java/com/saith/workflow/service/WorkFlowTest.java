@@ -2,7 +2,7 @@ package com.saith.workflow.service;
 
 import com.saith.workflow.processor.AddProcessor;
 import com.saith.workflow.processor.BeginProcessor;
-import com.saith.workflow.processor.MutilPlyProcessor;
+import com.saith.workflow.processor.MultiPlyProcessor;
 import com.saith.workflow.processor.Processor;
 import org.jgrapht.graph.DirectedAcyclicGraph;
 import org.testng.annotations.Test;
@@ -106,7 +106,7 @@ public class WorkFlowTest {
             Row row = new Row();
             row.setData("我是测试1");
             dataSet.setData(Collections.singletonList(row));
-            return x.process(dataSet, new ProcessContext());
+            return x.process(dataSet, null, new ProcessContext());
         };
 
         Function<Processor, Processor> fn2 = x -> {
@@ -114,7 +114,7 @@ public class WorkFlowTest {
             Row row = new Row();
             row.setData("我是测试2");
             dataSet.setData(Collections.singletonList(row));
-            x.process(dataSet, new ProcessContext());
+            x.process(dataSet, null, new ProcessContext());
             return x;
         };
 
@@ -123,7 +123,7 @@ public class WorkFlowTest {
             Row row = new Row();
             row.setData("我是测试3");
             dataSet.setData(Collections.singletonList(row));
-            x.process(dataSet, new ProcessContext());
+            x.process(dataSet, null, new ProcessContext());
             return x;
         };
 
@@ -207,10 +207,10 @@ public class WorkFlowTest {
         DAGNode node1 = DAGNode.from("1", "1", 1, new AddProcessor(1, 1, ""));
         DAGNode node2 = DAGNode.from("2", "2", 2, new AddProcessor(2, 2, ""));
         DAGNode node3 = DAGNode.from("3", "3", 3, new AddProcessor(3, 3, ""));
-        DAGNode node4 = DAGNode.from("4", "4", 4, new MutilPlyProcessor(4, 4, ""));
+        DAGNode node4 = DAGNode.from("4", "4", 4, new MultiPlyProcessor(4, 4, ""));
         DAGNode node5 = DAGNode.from("5", "5", 5, new AddProcessor(5, 5, ""));
         DAGNode node6 = DAGNode.from("6", "6", 6, new AddProcessor(6, 6, ""));
-        DAGNode node7 = DAGNode.from("7", "7", 7, new MutilPlyProcessor(7, 7, ""));
+        DAGNode node7 = DAGNode.from("7", "7", 7, new MultiPlyProcessor(7, 7, ""));
         //每一个processor  进去的是 dataSet 和 context
         DAG dag = new DAG();
         dag.addDependency(node1, node2);
@@ -224,6 +224,7 @@ public class WorkFlowTest {
         try {
             dag.topoSort();
             Thread.sleep(10000);
+
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println(Thread.currentThread());

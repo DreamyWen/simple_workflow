@@ -7,10 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * @author zhangjiawen
@@ -20,7 +17,7 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class MutilPlyProcessor implements Processor {
+public class MultiPlyProcessor implements Processor {
 
     private int id = 0;
     private int opCnt = 0;
@@ -32,15 +29,33 @@ public class MutilPlyProcessor implements Processor {
     }
 
     @Override
-    public DataSet<Row> process(DataSet<Row> input, ProcessContext processContext) {
+    public DataSet<Row> process(DataSet<Row> input, Map<String, DataSet<Row>> otherInput, ProcessContext processContext) {
         System.out.println(Thread.currentThread() + String.valueOf(id) + " MutilPlyProcessor processor start opt=" + opCnt);
+        int counter = 0;
+        if (otherInput != null) {
+            for (Map.Entry<String, DataSet<Row>> entry : otherInput.entrySet()) {
+                List<Row> otherRowList = entry.getValue().getData();
+                if (otherRowList != null && otherRowList.size() > 0) {
+                    Row row = otherRowList.get(0);
+                    int dataCnt = (int) row.getData();
+                    counter += dataCnt;
+                    System.out.println(Thread.currentThread() + String.valueOf(id) + " MutilPlyProcessor otherInput" + row);
+                }
+            }
+        }
+        int baseCnt = counter;
+        System.out.println("base Cnt=" + baseCnt);
         if (input != null) {
             List<Row> rowList = input.getData();
             if (rowList == null) {
                 rowList = new ArrayList<>();
                 Row row = new Row();
                 row.setId(String.valueOf(id));
-                row.setData(opCnt);
+                if (counter != 0) {
+                    row.setData(counter * opCnt);
+                } else {
+                    row.setData(opCnt);
+                }
                 rowList.add(row);
                 input.setData(rowList);
                 System.out.println(Thread.currentThread() + " " + row);
@@ -54,12 +69,12 @@ public class MutilPlyProcessor implements Processor {
                         result += cnt;
                     }
                 }
-                int multiResult = opCnt * result;
+                int multiResult = (result + counter) * opCnt;
                 if (multiResult != 0) {
                     rowList.get(0).setData(multiResult);
                     rowList.get(0).setId(String.valueOf(id));
                 }
-                System.out.println(Thread.currentThread() + String.valueOf(id) + " result row=" +rowList.get(0));
+                System.out.println(Thread.currentThread() + String.valueOf(id) + " result row=" + rowList.get(0));
             }
         }
         return input;

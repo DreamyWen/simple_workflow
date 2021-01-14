@@ -7,10 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * @author zhangjiawen
@@ -30,7 +27,7 @@ public class BeginProcessor implements Processor {
     }
 
     @Override
-    public DataSet<Row> process(DataSet<Row> input, ProcessContext processContext) {
+    public DataSet<Row> process(DataSet<Row> input, Map<String, DataSet<Row>> otherInput, ProcessContext processContext) {
 //        System.out.println(Thread.currentThread() + " begin processor start");
         if (input != null) {
             List<Row> rowList = input.getData();

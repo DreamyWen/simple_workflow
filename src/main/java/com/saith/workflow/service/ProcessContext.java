@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author zhangjiawen
@@ -19,9 +20,13 @@ import java.util.Map;
 @Builder
 public class ProcessContext {
 
-    private Map<String, Object> data = new HashMap<>();
+    private Map<String, Object> data = new ConcurrentHashMap<>();
 
     public void addData(String key, Object value) {
         data.put(key, value);
+    }
+
+    public void clear() {
+        data.clear();
     }
 }

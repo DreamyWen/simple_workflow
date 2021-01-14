@@ -59,9 +59,10 @@ public class DAG {
      * TODO 数据如何存，全局一个context 还是一个线程一个context
      * TODO 内存问题，什么时候gc不用的数据，在每次topo排序是 是否需要gc
      * TODO 性能问题，深拷贝 使用clone方式 还是 kyro
-     *
      */
     public void topoSort() {
+        processContext.clear();
+
         Iterator<DAGNode> iterator = dag.iterator();
 
         while (iterator.hasNext()) {
@@ -71,7 +72,7 @@ public class DAG {
             //入度为0的节点 直接调用supplyAsync, 将Processor Add进来
             if (inDegree == 0) {
                 CompletableFuture<DAGNode> nodeFuture = CompletableFuture.supplyAsync(() -> {
-                    DataSet<Row> result = dagNode.getProcessor().process(new DataSet<>(), processContext);
+                    DataSet<Row> result = dagNode.getProcessor().process(new DataSet<>(), null, processContext);
                     processContext.addData(dagNode.getProcessor().getProcessorKey(), result);
                     return dagNode;
                 });
@@ -88,18 +89,12 @@ public class DAG {
                 CompletableFuture<DAGNode> curFuture = fatherFuture.thenApplyAsync(curNode -> {
                     //获取上个节点结果
                     DataSet<Row> fatherData = (DataSet<Row>) processContext.getData().get(fatherNode.getProcessor().getProcessorKey());
-                    //深拷贝
-                    DataSet<Row> fatherDataClone = null;
-                    try {
-                        fatherDataClone = SerializationUtils.clone(fatherData);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-//                    DataSet<Row> fatherDataClone = fatherData;
+                    //深拷贝 kyro 方式 或者自己实现clone
+                    //TODO 待测试性能 如果子类没有实现Serializable 可能会抛出异常
+                    //https://stackoverflow.com/Questions/2156120/java-recommended-solution-for-deep-cloning-copying-an-instance
+                    DataSet<Row> fatherDataClone = SerializationUtils.clone(fatherData);
                     //调用该节点过程
-                    DataSet<Row> result = dagNode.getProcessor().process(fatherDataClone, processContext);
-                    //merge结果
-//                    DataSet<Row> mergeResult = fatherDataClone.merge(result);
+                    DataSet<Row> result = dagNode.getProcessor().process(fatherDataClone, null, processContext);
                     processContext.addData(dagNode.getProcessor().getProcessorKey(), result);
                     return curNode;
                 });
@@ -115,23 +110,17 @@ public class DAG {
                         .collect(Collectors.toList());
                 CompletableFuture<DAGNode> merge = CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0])).thenApplyAsync(
                         curNode -> {
-                            //上有节点的全部数据
-                            //TODO
-//                            List<DAGNode> nodeList = futureList.stream().map(i -> i.getNow(new DAGNode())).collect(Collectors.toList());
-                            DataSet<Row> mergeResult = fatherList.stream().map(i -> {
+                            //获取上个节点结果
+                            Map<String, DataSet<Row>> mutilProcessorDataSet = new HashMap<>(16);
+                            fatherList.forEach(i -> {
                                 //获取上个节点结果
                                 DataSet<Row> fatherData = (DataSet<Row>) processContext.getData().get(i.getProcessor().getProcessorKey());
-                                System.out.println("合并时上个节点的数据"+fatherData);
+                                System.out.println("合并时上个节点的数据" + fatherData);
                                 //深拷贝
-                                DataSet<Row> fatherDataClone = null;
-                                try {
-                                    fatherDataClone = SerializationUtils.clone(fatherData);
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                                return fatherDataClone;
-                            }).reduce(DataSet::merge).orElse(new DataSet<>());
-                            DataSet<Row> result = dagNode.getProcessor().process(mergeResult, processContext);
+                                DataSet<Row> fatherDataClone = SerializationUtils.clone(fatherData);
+                                mutilProcessorDataSet.put(i.getProcessor().getProcessorKey(), fatherDataClone);
+                            });
+                            DataSet<Row> result = dagNode.getProcessor().process(new DataSet<>(), mutilProcessorDataSet, processContext);
                             processContext.addData(dagNode.getProcessor().getProcessorKey(), result);
                             return dagNode;
                         }
