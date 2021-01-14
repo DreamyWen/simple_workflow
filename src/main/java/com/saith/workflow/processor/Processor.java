@@ -23,7 +23,7 @@ public interface Processor {
      * @param processContext 进程上下文
      * @return {@link DataSet<Row>}
      */
-    DataSet<Row> process(DataSet<Row> input, ProcessContext processContext);
+    DataSet<Row> process(final DataSet<Row> input, ProcessContext processContext);
 
     /**
      * 得到处理器Key

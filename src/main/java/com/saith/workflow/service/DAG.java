@@ -1,15 +1,8 @@
 package com.saith.workflow.service;
 
-/**
- * @author zhangjiawen
- * @version 1.0
- * @date 2021/1/11 5:18 下午
- */
-
 import com.alibaba.fastjson.JSON;
 import lombok.Data;
-import org.jgrapht.Graphs;
-import org.jgrapht.alg.connectivity.ConnectivityInspector;
+import org.apache.commons.lang3.SerializationUtils;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DirectedAcyclicGraph;
 
@@ -22,7 +15,7 @@ import java.util.stream.Collectors;
 /**
  * dag
  *
- * @author saith
+ * @author zhangjiawen
  * @date 2021/01/11
  */
 @Data
@@ -31,6 +24,9 @@ public class DAG {
     public DirectedAcyclicGraph<DAGNode, DefaultEdge> dag;
     Map<String, CompletableFuture<DAGNode>> completableFutureMap = new ConcurrentHashMap<>();
 
+    /***
+     *   TODO 存取上下文，需要决定gc的时机
+     */
     ProcessContext processContext;
 
     public DAG() {
@@ -42,11 +38,16 @@ public class DAG {
         dag.addVertex(node);
     }
 
+    /***
+     *  加依赖，可以此时增加init初始化
+     */
     public void addDependency(DAGNode node1, DAGNode node2) {
         if (!dag.containsVertex(node1)) {
+            node1.getProcessor().init();
             dag.addVertex(node1);
         }
         if (!dag.containsVertex(node2)) {
+            node2.getProcessor().init();
             dag.addVertex(node2);
         }
         dag.addEdge(node1, node2);
@@ -56,6 +57,9 @@ public class DAG {
      * 构建completeFuture
      * 先启动依赖的任务，依赖执行完，入度-1
      * TODO 数据如何存，全局一个context 还是一个线程一个context
+     * TODO 内存问题，什么时候gc不用的数据，在每次topo排序是 是否需要gc
+     * TODO 性能问题，深拷贝 使用clone方式 还是 kyro
+     *
      */
     public void topoSort() {
         Iterator<DAGNode> iterator = dag.iterator();
@@ -63,37 +67,40 @@ public class DAG {
         while (iterator.hasNext()) {
             DAGNode dagNode = iterator.next();
             int inDegree = dag.inDegreeOf(dagNode);
-            int outDegree = dag.outDegreeOf(dagNode);
 
-            Set<DAGNode> neighbor = Graphs.neighborSetOf(dag, dagNode);
             //入度为0的节点 直接调用supplyAsync, 将Processor Add进来
             if (inDegree == 0) {
                 CompletableFuture<DAGNode> nodeFuture = CompletableFuture.supplyAsync(() -> {
                     DataSet<Row> result = dagNode.getProcessor().process(new DataSet<>(), processContext);
                     processContext.addData(dagNode.getProcessor().getProcessorKey(), result);
-                    System.out.println("执行节点" + dagNode);
                     return dagNode;
                 });
                 //暂时先用id
                 completableFutureMap.put(dagNode.getId().toString(), nodeFuture);
-//                System.out.println("放入map " + dagNode.getId().toString() + nodeFuture);
             }
             if (inDegree == 1) {
                 //获取父亲节点
                 Set<DefaultEdge> incomingEdgeSet = dag.incomingEdgesOf(dagNode);
                 DefaultEdge incomingEdge = incomingEdgeSet.stream().findFirst().orElse(new DefaultEdge());
                 DAGNode fatherNode = dag.getEdgeSource(incomingEdge);
-                System.out.println("获取父亲=" + fatherNode.getId().toString());
                 //此处获取可能为null
                 CompletableFuture<DAGNode> fatherFuture = completableFutureMap.get(fatherNode.getId().toString());
                 CompletableFuture<DAGNode> curFuture = fatherFuture.thenApplyAsync(curNode -> {
                     //获取上个节点结果
                     DataSet<Row> fatherData = (DataSet<Row>) processContext.getData().get(fatherNode.getProcessor().getProcessorKey());
+                    //深拷贝
+                    DataSet<Row> fatherDataClone = null;
+                    try {
+                        fatherDataClone = SerializationUtils.clone(fatherData);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+//                    DataSet<Row> fatherDataClone = fatherData;
                     //调用该节点过程
-                    DataSet<Row> result = dagNode.getProcessor().process(fatherData, processContext);
+                    DataSet<Row> result = dagNode.getProcessor().process(fatherDataClone, processContext);
                     //merge结果
-                    DataSet<Row> mergeResult = fatherData.merge(result);
-                    processContext.addData(dagNode.getProcessor().getProcessorKey(), mergeResult);
+//                    DataSet<Row> mergeResult = fatherDataClone.merge(result);
+                    processContext.addData(dagNode.getProcessor().getProcessorKey(), result);
                     return curNode;
                 });
                 completableFutureMap.put(dagNode.getId().toString(), curFuture);
@@ -106,20 +113,30 @@ public class DAG {
                 List<CompletableFuture<DAGNode>> futureList = fatherList.stream()
                         .map(i -> completableFutureMap.get(i.getId().toString()))
                         .collect(Collectors.toList());
-                CompletableFuture<Void> merge = CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0])).thenApplyAsync(
+                CompletableFuture<DAGNode> merge = CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0])).thenApplyAsync(
                         curNode -> {
                             //上有节点的全部数据
-                            List<DAGNode> nodeList = futureList.stream().map(i -> i.getNow(new DAGNode())).collect(Collectors.toList());
-                            DataSet<Row> mergeResult = nodeList.stream().map(i -> {
+                            //TODO
+//                            List<DAGNode> nodeList = futureList.stream().map(i -> i.getNow(new DAGNode())).collect(Collectors.toList());
+                            DataSet<Row> mergeResult = fatherList.stream().map(i -> {
                                 //获取上个节点结果
                                 DataSet<Row> fatherData = (DataSet<Row>) processContext.getData().get(i.getProcessor().getProcessorKey());
-                                return fatherData;
+                                System.out.println("合并时上个节点的数据"+fatherData);
+                                //深拷贝
+                                DataSet<Row> fatherDataClone = null;
+                                try {
+                                    fatherDataClone = SerializationUtils.clone(fatherData);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                                return fatherDataClone;
                             }).reduce(DataSet::merge).orElse(new DataSet<>());
-                            ProcessContext processContext = new ProcessContext();
-                            processContext.addData(dagNode.getProcessor().getProcessorKey(), mergeResult);
-                            return curNode;
+                            DataSet<Row> result = dagNode.getProcessor().process(mergeResult, processContext);
+                            processContext.addData(dagNode.getProcessor().getProcessorKey(), result);
+                            return dagNode;
                         }
                 );
+                completableFutureMap.put(dagNode.getId().toString(), merge);
             }
 //            Set<DAGNode> ancestorSet = dag.getAncestors(dagNode);
 //            Set<DAGNode> dependencySet = dag.getDescendants(dagNode);
@@ -129,9 +146,6 @@ public class DAG {
 //                    dagNode.getName(), inDegree, outDegree, ancestorSet, dependencySet));
 //            System.out.println(completableFutureMap);
         }
-    }
-
-    public void run() {
     }
 
     public String toWorkFlow() {

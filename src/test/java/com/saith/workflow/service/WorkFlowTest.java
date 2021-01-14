@@ -1,6 +1,8 @@
 package com.saith.workflow.service;
 
+import com.saith.workflow.processor.AddProcessor;
 import com.saith.workflow.processor.BeginProcessor;
+import com.saith.workflow.processor.MutilPlyProcessor;
 import com.saith.workflow.processor.Processor;
 import org.jgrapht.graph.DirectedAcyclicGraph;
 import org.testng.annotations.Test;
@@ -174,13 +176,41 @@ public class WorkFlowTest {
 
     @Test
     public void testDAG() throws Exception {
-        DAGNode node1 = DAGNode.from("1", "1", 1, new BeginProcessor());
-        DAGNode node2 = DAGNode.from("2", "2", 2, new BeginProcessor());
-        DAGNode node3 = DAGNode.from("3", "3", 3, new BeginProcessor());
-        DAGNode node4 = DAGNode.from("4", "4", 4, new BeginProcessor());
-        DAGNode node5 = DAGNode.from("5", "5", 5, new BeginProcessor());
-        DAGNode node6 = DAGNode.from("6", "6", 6, new BeginProcessor());
-        DAGNode node7 = DAGNode.from("7", "7", 7, new BeginProcessor());
+        DAGNode node1 = DAGNode.from("1", "1", 1, new BeginProcessor(1));
+        DAGNode node2 = DAGNode.from("2", "2", 2, new BeginProcessor(2));
+        DAGNode node3 = DAGNode.from("3", "3", 3, new BeginProcessor(3));
+        DAGNode node4 = DAGNode.from("4", "4", 4, new BeginProcessor(4));
+        DAGNode node5 = DAGNode.from("5", "5", 5, new BeginProcessor(5));
+        DAGNode node6 = DAGNode.from("6", "6", 6, new BeginProcessor(6));
+        DAGNode node7 = DAGNode.from("7", "7", 7, new BeginProcessor(7));
+        //每一个processor  进去的是 dataSet 和 context
+        DAG dag = new DAG();
+        dag.addDependency(node1, node2);
+        dag.addDependency(node1, node3);
+        dag.addDependency(node1, node6);
+        dag.addDependency(node2, node4);
+        dag.addDependency(node3, node5);
+        dag.addDependency(node4, node7);
+        dag.addDependency(node5, node7);
+
+        try {
+            dag.topoSort();
+            Thread.sleep(100000);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println(Thread.currentThread());
+        }
+    }
+
+    @Test
+    public void testDAGCompute() throws Exception {
+        DAGNode node1 = DAGNode.from("1", "1", 1, new AddProcessor(1, 1, ""));
+        DAGNode node2 = DAGNode.from("2", "2", 2, new AddProcessor(2, 2, ""));
+        DAGNode node3 = DAGNode.from("3", "3", 3, new AddProcessor(3, 3, ""));
+        DAGNode node4 = DAGNode.from("4", "4", 4, new MutilPlyProcessor(4, 4, ""));
+        DAGNode node5 = DAGNode.from("5", "5", 5, new AddProcessor(5, 5, ""));
+        DAGNode node6 = DAGNode.from("6", "6", 6, new AddProcessor(6, 6, ""));
+        DAGNode node7 = DAGNode.from("7", "7", 7, new MutilPlyProcessor(7, 7, ""));
         //每一个processor  进去的是 dataSet 和 context
         DAG dag = new DAG();
         dag.addDependency(node1, node2);

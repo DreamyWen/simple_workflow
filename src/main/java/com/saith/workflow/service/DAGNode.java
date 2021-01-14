@@ -1,13 +1,14 @@
 package com.saith.workflow.service;
 
 import com.saith.workflow.processor.Processor;
-import lombok.*;
 import lombok.Data;
-
-import javax.naming.Context;
+import lombok.*;
 
 /**
+ * dagnode
+ *
  * @author saith
+ * @date 2021/01/12
  */
 @Data
 @Builder
@@ -20,11 +21,6 @@ public class DAGNode {
     String type;
     Integer id;
     Processor processor;
-//    ProcessContext context;
-
-//    public static DAGNode from(String name, String type, Integer id, Processor processor, ProcessContext context) {
-//        return new DAGNode(name, type, id, processor, context);
-//    }
 
     public static DAGNode from(String name, String type, Integer id, Processor processor) {
         return new DAGNode(name, type, id, processor);
