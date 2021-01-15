@@ -59,6 +59,7 @@ public class DAG {
      * TODO 数据如何存，全局一个context 还是一个线程一个context
      * TODO 内存问题，什么时候gc不用的数据，在每次topo排序是 是否需要gc
      * TODO 性能问题，深拷贝 使用clone方式 还是 kyro
+     * TODO 性能问题，针对IO型 可以使用协程池
      */
     public void topoSort() {
         processContext.clear();
@@ -77,7 +78,6 @@ public class DAG {
                     return dagNode;
                 });
                 //TODO 暂时先用id
-//                completableFutureMap.put(dagNode.getId().toString(), nodeFuture);
                 completableFutureMap.put(dagNode.getProcessor().getProcessorKey(), nodeFuture);
             }
             if (inDegree == 1) {
@@ -129,13 +129,6 @@ public class DAG {
                 );
                 completableFutureMap.put(dagNode.getProcessor().getProcessorKey(), merge);
             }
-//            Set<DAGNode> ancestorSet = dag.getAncestors(dagNode);
-//            Set<DAGNode> dependencySet = dag.getDescendants(dagNode);
-//            System.out.println(String.format(Thread.currentThread() + "执行到 %s 临边%s",
-//                    dagNode.getName(), neighbor));
-//            System.out.println(String.format("执行到 %s 入度 %d 出度 %d 祖先%s 依赖%s ",
-//                    dagNode.getName(), inDegree, outDegree, ancestorSet, dependencySet));
-//            System.out.println(completableFutureMap);
         }
     }
 

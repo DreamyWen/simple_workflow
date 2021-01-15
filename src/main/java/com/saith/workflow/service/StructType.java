@@ -2,17 +2,16 @@ package com.saith.workflow.service;
 
 import lombok.Data;
 
+/**
+ * 结构体类型
+ *
+ * @author saith
+ * @date 2021/01/14
+ */
 @Data
 public class StructType {
-
-//    Schema schema;
-//    name: String,
-//    dataType: DataType,
-//    nullable: Boolean = true,
-//    metadata: Metadata = Metadata.empty
 
     String name;
     String dataType;
     Boolean nullable;
-
 }
